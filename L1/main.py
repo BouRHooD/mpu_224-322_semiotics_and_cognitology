@@ -77,9 +77,11 @@ class Window(QMainWindow):
 
     def connect_db_sqlite3(self):
         # Считываем значения из файла *.sql
-        init_sql_file = open("QuestionsAndAnswers.sql", encoding='utf-8').read()
+        file_db_path = 'QuestionsAndAnswers.db' if os.path.isfile('QuestionsAndAnswers.db') is True else 'L1/QuestionsAndAnswers.db'
+        file_sql_path = 'QuestionsAndAnswers.sql' if os.path.isfile('QuestionsAndAnswers.sql') is True else 'L1/QuestionsAndAnswers.sql'
+        init_sql_file = open(file_sql_path, encoding='utf-8').read()
         # Подключаем к БД или создаем ноый файл *.db 
-        self.db = sqlite3.connect("QuestionsAndAnswers.db")
+        self.db = sqlite3.connect("file_db_path")
         self.sql = self.db.cursor()
         # Инициализируем в БД таблицу вопросов и ответов
         self.sql.executescript(init_sql_file)
