@@ -55,7 +55,7 @@ class Window(QMainWindow):
         # Получаем первый вопрос
         self.select_question_id = 0
         self.count_questions_were_asked = 0
-        self.max_question_id = self.sql.execute("SELECT count(id) FROM QuestTable").fetchall()[0][0]
+        self.max_count_question_id = self.sql.execute("SELECT count(id) FROM QuestTable").fetchall()[0][0]
         self.show_question(self.select_question_id)
 
         # Загружаем таблицу ответов
@@ -140,18 +140,20 @@ class Window(QMainWindow):
             QMessageBox(QMessageBox.Warning, "Внимание!", "Необходимо значение ответа!").exec()
             return
         
+        # Получаем название параметра
+        selectParam = self.sql.execute(f"SELECT parameter FROM QuestTable WHERE id = {self.select_question_id}").fetchall()[0][0]
+        
         # Обрабатываем ответ, если не стоит флага игнорирования
         is_need_ignored_question = self.sql.execute(f"SELECT ignored FROM QuestTable WHERE id = {self.select_question_id}").fetchall()[0][0]
         if is_need_ignored_question == 0:
-            param = self.sql.execute(f"SELECT parameter FROM QuestTable WHERE id = {self.select_question_id}").fetchall()[0][0]
             # Обрабатываем ответ ("Не знаю")
             if answerText == "Не знаю":
-                param_rule_if_values = self.sql.execute(f"SELECT IF_Value FROM RulesSimpleTable WHERE IF_Atr = '{param}'").fetchall()
+                param_rule_if_values = self.sql.execute(f"SELECT IF_Value FROM RulesSimpleTable WHERE IF_Par = '{selectParam}'").fetchall()
                 question_rules = None
                 for param_rule_if_value_tuple in param_rule_if_values:
                     param_rule_if_value = param_rule_if_value_tuple[0]
                     if param_rule_if_value != "Не знаю": continue; 
-                    question_rules = self.sql.execute(f"SELECT Rule FROM RulesSimpleTable WHERE IF_Atr='{param}' and IF_Value='Не знаю'").fetchall()[0][0]
+                    question_rules = self.sql.execute(f"SELECT Rule FROM RulesSimpleTable WHERE IF_Par ='{selectParam}' and IF_Value='Не знаю'").fetchall()[0][0]
                     if question_rules is not None: break; 
                 if question_rules is not None:
                     lines_command = question_rules.replace("\"", "'").replace("{}", str(answerText)).split(";")
@@ -159,17 +161,17 @@ class Window(QMainWindow):
             # Обрабатываем ответ
             else:
                 # Обрабатываем ответ
-                param_rule_if_values = self.sql.execute(f"SELECT IF_Value FROM RulesSimpleTable WHERE IF_Atr = '{param}'").fetchall()
+                param_rule_if_values = self.sql.execute(f"SELECT IF_Value FROM RulesSimpleTable WHERE IF_Par = '{selectParam}'").fetchall()
                 question_rules = None
                 for param_rule_if_value_tuple in param_rule_if_values:
                     param_rule_if_value = param_rule_if_value_tuple[0]
                     if param_rule_if_value == "Не знаю": continue; 
                     if param_rule_if_value == "<Все>":
-                        question_rules = self.sql.execute(f"SELECT Rule FROM RulesSimpleTable WHERE IF_Atr='{param}' and IF_Value='<Все>'").fetchall()[0][0]
+                        question_rules = self.sql.execute(f"SELECT Rule FROM RulesSimpleTable WHERE IF_Par ='{selectParam}' and IF_Value='<Все>'").fetchall()[0][0]
                     elif param_rule_if_value == "[Поле ввода текста]":
-                        question_rules = self.sql.execute(f"SELECT Rule FROM RulesSimpleTable WHERE IF_Atr='{param}' and IF_Value='[Поле ввода текста]'").fetchall()[0][0]
+                        question_rules = self.sql.execute(f"SELECT Rule FROM RulesSimpleTable WHERE IF_Par ='{selectParam}' and IF_Value='[Поле ввода текста]'").fetchall()[0][0]
                     elif param_rule_if_value == answerText:
-                        question_rules = self.sql.execute(f"SELECT Rule FROM RulesSimpleTable WHERE IF_Atr='{param}' and IF_Value='{answerText}'").fetchall()[0][0]
+                        question_rules = self.sql.execute(f"SELECT Rule FROM RulesSimpleTable WHERE IF_Par ='{selectParam}' and IF_Value='{answerText}'").fetchall()[0][0]
                     if question_rules is not None: break; 
                 if question_rules is not None:
                     lines_command = question_rules.replace("\"", "'").replace("{}", str(answerText)).split(";")
@@ -178,8 +180,8 @@ class Window(QMainWindow):
         # Проверяем необходимость вывести итоговый результат
         select_answers_count = self.sql.execute("SELECT count(id) FROM AnswTable").fetchall()[0][0]
         # Если закончились вопросы, то выводим все оставшиеся результаты
-        next_quest_id = self.select_question_id + 1
-        if select_answers_count > 1 and (self.select_question_id >= self.max_question_id or next_quest_id >= self.max_question_id):
+        next_count_quest_id = self.select_question_id + 1
+        if select_answers_count > 1 and (self.select_question_id >= self.max_count_question_id or next_count_quest_id >= self.max_count_question_id):
             namesAutoStr = ""
             nameAutoList = self.sql.execute("SELECT nameAuto FROM AnswTable").fetchall()
             for i, nameAutoSql in enumerate(nameAutoList):
@@ -216,7 +218,29 @@ class Window(QMainWindow):
             return
 
         # Переходим к следующему вопросу
-        self.select_question_id += 1
+        param_quest_rule_if_values = self.sql.execute(f"SELECT IF_Value FROM QuestRulesTable WHERE IF_Par = '{selectParam}'").fetchall()
+        new_select_question_id = None
+        for param_quest_rule_if_value_tuple in param_quest_rule_if_values:
+            param_quest_rule_if_value = param_quest_rule_if_value_tuple[0]
+            if param_rule_if_value == "<Все>":
+                new_select_question_id = self.sql.execute(f"SELECT nextQuestId FROM QuestRulesTable WHERE IF_Par ='{selectParam}' and IF_Value='<Все>'").fetchall()[0][0]
+            elif param_rule_if_value == "[Поле ввода текста]":
+                new_select_question_id = self.sql.execute(f"SELECT nextQuestId FROM QuestRulesTable WHERE IF_Par ='{selectParam}' and IF_Value='[Поле ввода текста]'").fetchall()[0][0]
+            elif param_quest_rule_if_value == answerText:
+                new_select_question_id = self.sql.execute(f"SELECT nextQuestId FROM QuestRulesTable WHERE IF_Par ='{selectParam}' and IF_Value='{answerText}'").fetchall()[0][0]
+            if new_select_question_id is not None: break; 
+        
+        if new_select_question_id is not None: 
+            self.select_question_id = new_select_question_id; 
+            if new_select_question_id == -1:
+                # Вопрос был последним, проверяем данные таблицы ответов еще раз
+                self.show_question(self.select_question_id); 
+        else: 
+            self.ui.groupBox_Question.setTitle("Итог")
+            self.ui.label_Question.setText(f"После вопроса с ID = '{self.select_question_id}' нужного вопроса не нашлось!")
+            self.need_exit = True
+            return
+        
         # Если стоит игнорирование вопроса, то переходим к следующему и сново заходим в данный метод
         is_need_ignored_next_question = self.sql.execute(f"SELECT ignored FROM QuestTable WHERE id = {self.select_question_id}").fetchall()[0][0]
         if is_need_ignored_next_question != 0: self.pushButton_SendAnswer_Clicked(); 
