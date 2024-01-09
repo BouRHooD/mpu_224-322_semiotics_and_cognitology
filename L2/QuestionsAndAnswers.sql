@@ -8,11 +8,13 @@ DROP TABLE IF EXISTS QuestTable;
 DROP TABLE IF EXISTS AnswTable;
 DROP TABLE IF EXISTS QuestRulesTable;
 DROP TABLE IF EXISTS RulesSimpleTable;
+DROP TABLE IF EXISTS RulesComplexTable;
 
 CREATE TABLE QuestTable       (ID INTEGER PRIMARY KEY, question TEXT, answers TEXT, parameter TEXT, ignored INTEGER, imagePath TEXT);
 CREATE TABLE AnswTable        (ID INTEGER PRIMARY KEY, nameAuto TEXT, priceAuto INTEGER, countryAuto TEXT, carBodyType TEXT, clearanceAuto INTEGER, yearAuto INTEGER, fuelСonsumptionAuto INTEGER, transmissionType TEXT, engineType TEXT, engineСapacity TEXT, wheelDriveType TEXT, trunkVolume INTEGER, imagePath TEXT);
 CREATE TABLE QuestRulesTable  (ID INTEGER PRIMARY KEY, IF_Par TEXT, If_Value TEXT, nextQuestId INTEGER);
 CREATE TABLE RulesSimpleTable (ID INTEGER PRIMARY KEY, IF_Par TEXT, IF_Value TEXT, Rule TEXT);
+CREATE TABLE RulesComplexTable (ID INTEGER PRIMARY KEY, IF_Par_RuleComplex, IF_Par_1 TEXT, IF_Value_1 TEXT, IF_Par_2 TEXT, IF_Value_2 TEXT, Rule TEXT);
 
 /*QuestTable-------------------ID,  question,                                                          answers,                                                    parameter,                        ignored, imagePath*/
 INSERT INTO QuestTable VALUES (0,  'Какой должна быть максимальная цена автомобиля в рублях?',        '200000;300000;400000;500000;600000;700000;800000;900000',  'max_priceAuto',                  0,       'Images/QuestionsImages/');
@@ -37,6 +39,7 @@ INSERT INTO QuestTable VALUES (18, '"Задний" привод - когда д�
 INSERT INTO QuestTable VALUES (19, '"Полный" привод - когда двигатель вращает все четыре колеса. Плюсы: улучшенная управляемость, безопасность и стабильность автомобиля при движении (даже по бездорожью). Минусы: повышенный расход топлива, увеличение веса автомобиля, дорогое обслуживание. Вам нравится "Полный" привод?',                                                'Да;Нет;Не знаю', 'select_wheelDriveType_like_full',     1, 'Images/QuestionsImages/Полный привод.png');
 INSERT INTO QuestTable VALUES (20, 'Какой должен быть минимальный объем багажника в литрах?',         '[Поле ввода текста];[Кнопка-Не знаю]',                      'select_trunkVolume',            0,       'Images/QuestionsImages/');
 INSERT INTO QuestTable VALUES (21, 'Вы планируете перевозить габаритные вещи в багажнике (каляски/походные вещи/маленький холодильник)?', 'Да;Нет;Не знаю',        'select_trunkVolume_like_big',   1,       'Images/QuestionsImages/');
+INSERT INTO QuestTable VALUES (22, 'Вы хотите автомобиль с типом кузова "Седан" и типом привода "Передний"?', 'Да;Нет;Не знаю', 'RulesComplex_1{select_carBodyType_like_sedan;select_wheelDriveType_like_forwward}', 0,       'Images/QuestionsImages/');
 
 /*AnswTable-------------------ID, nameAuto,                       priceAuto, countryAuto, carBodyType,                       clearanceAuto, yearAuto, fuelСonsumptionAuto, transmissionType,                        engineType,      engineСapacity,      wheelDriveType,    trunkVolume, imagePath*/
 INSERT INTO AnswTable VALUES (0,  'Renault Megane II',            300000,    'Франция',   'Седан;Хетчбек',                   125,           2002,     11,                  'Механическая;Автоматическая',           'Бензин;Дизель', "1.4;1.5;1.6;1.9;2", 'Передний',        520,         'Images/AnswersImages/Renault Megane II.png');
@@ -96,11 +99,14 @@ INSERT INTO QuestRulesTable(IF_Par, If_Value, nextQuestId) VALUES ('select_wheel
 INSERT INTO QuestRulesTable(IF_Par, If_Value, nextQuestId) VALUES ('select_wheelDriveType_like_full',     'Да',                  20);
 INSERT INTO QuestRulesTable(IF_Par, If_Value, nextQuestId) VALUES ('select_wheelDriveType_like_full',     'Нет',                 20);
 INSERT INTO QuestRulesTable(IF_Par, If_Value, nextQuestId) VALUES ('select_wheelDriveType_like_full',     'Не знаю',             20);
-INSERT INTO QuestRulesTable(IF_Par, If_Value, nextQuestId) VALUES ('select_trunkVolume',                  '<Все>',               -1);
+INSERT INTO QuestRulesTable(IF_Par, If_Value, nextQuestId) VALUES ('select_trunkVolume',                  '<Все>',               22);
 INSERT INTO QuestRulesTable(IF_Par, If_Value, nextQuestId) VALUES ('select_trunkVolume',                  'Не знаю',             21);
-INSERT INTO QuestRulesTable(IF_Par, If_Value, nextQuestId) VALUES ('select_trunkVolume_like_big',         'Да',                  -1);
-INSERT INTO QuestRulesTable(IF_Par, If_Value, nextQuestId) VALUES ('select_trunkVolume_like_big',         'Нет',                 -1);
-INSERT INTO QuestRulesTable(IF_Par, If_Value, nextQuestId) VALUES ('select_trunkVolume_like_big',         'Не знаю',             -1);
+INSERT INTO QuestRulesTable(IF_Par, If_Value, nextQuestId) VALUES ('select_trunkVolume_like_big',         'Да',                  22);
+INSERT INTO QuestRulesTable(IF_Par, If_Value, nextQuestId) VALUES ('select_trunkVolume_like_big',         'Нет',                 22);
+INSERT INTO QuestRulesTable(IF_Par, If_Value, nextQuestId) VALUES ('select_trunkVolume_like_big',         'Не знаю',             22);
+INSERT INTO QuestRulesTable(IF_Par, If_Value, nextQuestId) VALUES ('RulesComplex_1{select_carBodyType_like_sedan;select_wheelDriveType_like_forwward}', 'Да',                  -1);
+INSERT INTO QuestRulesTable(IF_Par, If_Value, nextQuestId) VALUES ('RulesComplex_1{select_carBodyType_like_sedan;select_wheelDriveType_like_forwward}', 'Нет',                 -1);
+INSERT INTO QuestRulesTable(IF_Par, If_Value, nextQuestId) VALUES ('RulesComplex_1{select_carBodyType_like_sedan;select_wheelDriveType_like_forwward}', 'Не знаю',             -1);
 
 /*RulesSimpleTable-------------------------------------------IF_Par,                                IF_Value,              Rule*/
 INSERT INTO RulesSimpleTable(IF_Par, IF_Value, Rule) VALUES ('max_priceAuto',                       '<Все>',               'DELETE FROM AnswTable WHERE priceAuto > {}'                                                                                     );
@@ -130,6 +136,8 @@ INSERT INTO RulesSimpleTable(IF_Par, IF_Value, Rule) VALUES ('select_trunkVolume
 INSERT INTO RulesSimpleTable(IF_Par, IF_Value, Rule) VALUES ('select_trunkVolume',                  'Не знаю',             'UPDATE QuestTable SET ignored = 0 WHERE id = 21'                                                                                );
 INSERT INTO RulesSimpleTable(IF_Par, IF_Value, Rule) VALUES ('select_trunkVolume_like_big',         'Да',                  'DELETE FROM AnswTable WHERE trunkVolume < 1100'                                                                                 );
 
+/*RulesComplexTable-------------------------------------------                                                         IF_Par_RuleComplex,                                                                  IF_Par_1,                        IF_Value_1, IF_Par_2,                              IF_Value_2, Rule*/
+INSERT INTO RulesComplexTable(IF_Par_RuleComplex, IF_Par_1, IF_Value_1, IF_Par_2, IF_Value_2, Rule) VALUES ('RulesComplex_1{select_carBodyType_like_sedan;select_wheelDriveType_like_forwward}', 'select_carBodyType_like_sedan', 'Да',       'select_wheelDriveType_like_forwward', 'Да',       'DELETE FROM AnswTable WHERE wheelDriveType NOT LIKE "%Передний%"; DELETE FROM AnswTable WHERE carBodyType NOT LIKE "%Седан%"');
 
 
 

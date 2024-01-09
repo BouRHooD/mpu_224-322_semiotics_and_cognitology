@@ -143,39 +143,51 @@ class Window(QMainWindow):
         # Получаем название параметра
         selectParam = self.sql.execute(f"SELECT parameter FROM QuestTable WHERE id = {self.select_question_id}").fetchall()[0][0]
         
-        # Обрабатываем ответ, если не стоит флага игнорирования
-        is_need_ignored_question = self.sql.execute(f"SELECT ignored FROM QuestTable WHERE id = {self.select_question_id}").fetchall()[0][0]
-        if is_need_ignored_question == 0:
-            # Обрабатываем ответ ("Не знаю")
-            if answerText == "Не знаю":
-                param_rule_if_values = self.sql.execute(f"SELECT IF_Value FROM RulesSimpleTable WHERE IF_Par = '{selectParam}'").fetchall()
-                question_rules = None
-                for param_rule_if_value_tuple in param_rule_if_values:
-                    param_rule_if_value = param_rule_if_value_tuple[0]
-                    if param_rule_if_value != "Не знаю": continue; 
-                    question_rules = self.sql.execute(f"SELECT Rule FROM RulesSimpleTable WHERE IF_Par ='{selectParam}' and IF_Value='Не знаю'").fetchall()[0][0]
-                    if question_rules is not None: break; 
-                if question_rules is not None:
-                    lines_command = question_rules.replace("\"", "'").replace("{}", str(answerText)).split(";")
-                    for line in lines_command: self.db.execute(line); 
-            # Обрабатываем ответ
-            else:
+        # Если параметр составной, то выполняем 1 ветку кода
+        RulesComplex_Value = None
+        RulesComplex_Values = self.sql.execute(f"SELECT * FROM RulesComplexTable").fetchall()
+        for ruleComplex in RulesComplex_Values:
+            if ruleComplex[1] == selectParam:
+                RulesComplex_Value = ruleComplex
+        if RulesComplex_Value is not None:
+            if answerText == RulesComplex_Value[3] and answerText == RulesComplex_Value[5]:
+                question_rules = RulesComplex_Value[6]
+                lines_command = question_rules.replace("\"", "'").replace("{}", str(answerText)).split(";")
+                for line in lines_command: self.db.execute(line); 
+        else:
+            # Обрабатываем ответ, если не стоит флага игнорирования
+            is_need_ignored_question = self.sql.execute(f"SELECT ignored FROM QuestTable WHERE id = {self.select_question_id}").fetchall()[0][0]
+            if is_need_ignored_question == 0:
+                # Обрабатываем ответ ("Не знаю")
+                if answerText == "Не знаю":
+                    param_rule_if_values = self.sql.execute(f"SELECT IF_Value FROM RulesSimpleTable WHERE IF_Par = '{selectParam}'").fetchall()
+                    question_rules = None
+                    for param_rule_if_value_tuple in param_rule_if_values:
+                        param_rule_if_value = param_rule_if_value_tuple[0]
+                        if param_rule_if_value != "Не знаю": continue; 
+                        question_rules = self.sql.execute(f"SELECT Rule FROM RulesSimpleTable WHERE IF_Par ='{selectParam}' and IF_Value='Не знаю'").fetchall()[0][0]
+                        if question_rules is not None: break; 
+                    if question_rules is not None:
+                        lines_command = question_rules.replace("\"", "'").replace("{}", str(answerText)).split(";")
+                        for line in lines_command: self.db.execute(line); 
                 # Обрабатываем ответ
-                param_rule_if_values = self.sql.execute(f"SELECT IF_Value FROM RulesSimpleTable WHERE IF_Par = '{selectParam}'").fetchall()
-                question_rules = None
-                for param_rule_if_value_tuple in param_rule_if_values:
-                    param_rule_if_value = param_rule_if_value_tuple[0]
-                    if param_rule_if_value == "Не знаю": continue; 
-                    if param_rule_if_value == "<Все>":
-                        question_rules = self.sql.execute(f"SELECT Rule FROM RulesSimpleTable WHERE IF_Par ='{selectParam}' and IF_Value='<Все>'").fetchall()[0][0]
-                    elif param_rule_if_value == "[Поле ввода текста]":
-                        question_rules = self.sql.execute(f"SELECT Rule FROM RulesSimpleTable WHERE IF_Par ='{selectParam}' and IF_Value='[Поле ввода текста]'").fetchall()[0][0]
-                    elif param_rule_if_value == answerText:
-                        question_rules = self.sql.execute(f"SELECT Rule FROM RulesSimpleTable WHERE IF_Par ='{selectParam}' and IF_Value='{answerText}'").fetchall()[0][0]
-                    if question_rules is not None: break; 
-                if question_rules is not None:
-                    lines_command = question_rules.replace("\"", "'").replace("{}", str(answerText)).split(";")
-                    for line in lines_command: self.db.execute(line); 
+                else:
+                    # Обрабатываем ответ
+                    param_rule_if_values = self.sql.execute(f"SELECT IF_Value FROM RulesSimpleTable WHERE IF_Par = '{selectParam}'").fetchall()
+                    question_rules = None
+                    for param_rule_if_value_tuple in param_rule_if_values:
+                        param_rule_if_value = param_rule_if_value_tuple[0]
+                        if param_rule_if_value == "Не знаю": continue; 
+                        if param_rule_if_value == "<Все>":
+                            question_rules = self.sql.execute(f"SELECT Rule FROM RulesSimpleTable WHERE IF_Par ='{selectParam}' and IF_Value='<Все>'").fetchall()[0][0]
+                        elif param_rule_if_value == "[Поле ввода текста]":
+                            question_rules = self.sql.execute(f"SELECT Rule FROM RulesSimpleTable WHERE IF_Par ='{selectParam}' and IF_Value='[Поле ввода текста]'").fetchall()[0][0]
+                        elif param_rule_if_value == answerText:
+                            question_rules = self.sql.execute(f"SELECT Rule FROM RulesSimpleTable WHERE IF_Par ='{selectParam}' and IF_Value='{answerText}'").fetchall()[0][0]
+                        if question_rules is not None: break; 
+                    if question_rules is not None:
+                        lines_command = question_rules.replace("\"", "'").replace("{}", str(answerText)).split(";")
+                        for line in lines_command: self.db.execute(line); 
 
         # Проверяем необходимость вывести итоговый результат
         select_answers_count = self.sql.execute("SELECT count(id) FROM AnswTable").fetchall()[0][0]
